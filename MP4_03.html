@@ -339,10 +339,10 @@
                            clearInterval(conversionInterval);
                            statusText.textContent = "Downloading...";
                         }
-                    }, 200); 
+                    }, 200);
 
 
-                    // Get the converted file back from the server
+                    //   Get the converted file back from the server
                     const blob = await response.blob();
                     const downloadUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
