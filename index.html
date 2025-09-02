@@ -42,6 +42,8 @@
             display: none;
             height: 30px;
             margin-top: 10px;
+            border-radius: 5px;
+            overflow: hidden;
         }
         #progressBarFill {
             height: 100%;
@@ -50,16 +52,60 @@
             text-align: center;
             line-height: 30px;
             color: white;
+            transition: width 0.3s;
+            background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+            background-size: 40px 40px;
+            animation: progressAnimation 2s linear infinite;
+        }
+        @keyframes progressAnimation {
+            from {
+                background-position: 40px 0;
+            }
+            to {
+                background-position: 0 0;
+            }
+        }
+        #conversionStatus {
+            margin: 15px 0;
+            font-weight: bold;
         }
     </style>
-    <!-- Add FFmpeg.wasm libraries -->
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"></script>
+    <!-- Add FFmpeg.wasm libraries with cross-origin attributes -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js" crossorigin="anonymous"></script>
+    <!-- Add SharedArrayBuffer support check -->
+    <script>
+        // Check if the browser environment supports SharedArrayBuffer
+        window.addEventListener('DOMContentLoaded', function() {
+            try {
+                // Check for SharedArrayBuffer support
+                if (typeof SharedArrayBuffer === 'undefined') {
+                    document.getElementById('compatibility-warning').style.display = 'block';
+                }
+                
+                // Check for cross-origin isolation which is needed for SharedArrayBuffer
+                if (window.crossOriginIsolated === false) {
+                    document.getElementById('compatibility-warning').style.display = 'block';
+                    console.warn('Website is not cross-origin isolated. SharedArrayBuffer may not be available.');
+                }
+            } catch (e) {
+                console.error('Error checking compatibility:', e);
+                document.getElementById('compatibility-warning').style.display = 'block';
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="container">
         <h1>MP4 Converter</h1>
         <p>Convert your video files to MP4 format with custom bitrate</p>
+        
+        <!-- Compatibility Warning -->
+        <div id="compatibility-warning" style="display: none; background-color: #ffdddd; padding: 15px; border-left: 5px solid #f44336; margin-bottom: 15px;">
+            <h3>⚠️ Browser Compatibility Issue</h3>
+            <p>This application requires modern browser features that may not be available in your current environment.</p>
+            <p>Please see our <a href="cors-info.html">compatibility information page</a> for solutions.</p>
+        </div>
         
         <div class="form-group">
             <label for="videoFile">Select video file:</label>
@@ -82,57 +128,7 @@
         <div id="downloadContainer"></div>
     </div>
 
-    <script>
-        const { createFFmpeg, fetchFile } = FFmpeg;
-        const ffmpeg = createFFmpeg({ log: true });
-
-        async function startConversion() {
-            const videoFile = document.getElementById('videoFile').files[0];
-            const bitrate = document.getElementById('bitrate').value;
-            const conversionStatus = document.getElementById('conversionStatus');
-            const progressBar = document.getElementById('progressBar');
-            const progressBarFill = document.getElementById('progressBarFill');
-            const downloadContainer = document.getElementById('downloadContainer');
-
-            if (!videoFile) {
-                alert('Please select a video file');
-                return;
-            }
-
-            conversionStatus.innerHTML = 'Loading FFmpeg.wasm core...';
-            await ffmpeg.load();
-
-            conversionStatus.innerHTML = 'Converting video...';
-            progressBar.style.display = 'block';
-
-            // Write the input file to the FS
-            ffmpeg.FS('writeFile', videoFile.name, await fetchFile(videoFile));
-
-            // Run the FFmpeg command
-            ffmpeg.setProgress(({ ratio }) => {
-                const percent = Math.round(ratio * 100);
-                progressBarFill.style.width = `${percent}%`;
-                progressBarFill.innerHTML = `${percent}%`;
-            });
-
-            await ffmpeg.run('-i', videoFile.name, '-b:a', `${bitrate}k`, 'output.mp4');
-
-            // Clean up the FS
-            // ffmpeg.FS('unlink', videoFile.name);
-
-            conversionStatus.innerHTML = 'Conversion finished!';
-
-            // Create a download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(new Blob([ffmpeg.FS('readFile', 'output.mp4')]));
-            downloadLink.download = 'converted_video.mp4';
-            downloadLink.className = 'download-button';
-            downloadLink.innerHTML = 'Download MP4';
-
-            // Clear previous download link
-            downloadContainer.innerHTML = '';
-            downloadContainer.appendChild(downloadLink);
-        }
-    </script>
+    <!-- Reference the external script.js file -->
+    <script src="script.js"></script>
 </body>
 </html>
