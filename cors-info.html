@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP4 Converter - CORS Info</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+            text-decoration: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MP4 Converter - CORS Information</h1>
+        
+        <div class="warning">
+            <h3>Why is the converter not working?</h3>
+            <p>Our MP4 converter uses advanced browser technologies (WebAssembly with SharedArrayBuffer) that require specific security settings. GitHub Pages doesn't support the required HTTP headers by default.</p>
+        </div>
+        
+        <h2>How to use this converter:</h2>
+        <p>Option 1: Run locally with a simple server that sets the proper headers:</p>
+        <ol>
+            <li>Clone the repository</li>
+            <li>Install a simple HTTP server like <code>http-server</code> (<code>npm install -g http-server</code>)</li>
+            <li>Run with the CORS headers: <code>http-server --cors '*' -p 8080</code></li>
+            <li>Open <a href="http://localhost:8080">http://localhost:8080</a> in your browser</li>
+        </ol>
+        
+        <p>Option 2: Use a service that supports the required headers:</p>
+        <ul>
+            <li>Deploy to Netlify, Vercel, or another service that allows custom headers</li>
+            <li>Set up the headers:</li>
+            <ul>
+                <li><code>Cross-Origin-Embedder-Policy: require-corp</code></li>
+                <li><code>Cross-Origin-Opener-Policy: same-origin</code></li>
+            </ul>
+        </ul>
+        
+        <a href="index.html" class="btn">Back to Converter</a>
+    </div>
+</body>
+</html>

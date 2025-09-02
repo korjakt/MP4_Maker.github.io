@@ -1,0 +1,14 @@
+[build]
+  publish = "/"
+  command = "# no build command needed for static site"
+  
+# Set the production branch to Mp4_Maker_Web
+[context.production]
+  publish = "/"
+  # This specifies that the Mp4_Maker_Web branch should be used for production builds
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Cross-Origin-Opener-Policy = "same-origin"
