@@ -1,104 +1,85 @@
-console.log("Server script starting...");
-
+// A Node.js server to handle file uploads and video conversion.
 const express = require('express');
-console.log("-> Express module loaded.");
 const multer = require('multer');
-console.log("-> Multer module loaded.");
-const { exec } = require('child_process');
-console.log("-> Child Process module loaded.");
-const cors = require('cors');
-console.log("-> CORS module loaded.");
-const fs = require('fs');
-console.log("-> File System (fs) module loaded.");
+const { spawn } = require('child_process');
 const path = require('path');
-console.log("-> Path module loaded.");
+const fs = require('fs');
+const cors = require('cors');
 
+console.log('✅ Modules loaded. Initializing application...');
+
+// --- Configuration ---
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000; // Use Render's port or default to 3000
 
-console.log("\nChecking for 'uploads' and 'converted' directories...");
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
-if (!fs.existsSync('converted')) fs.mkdirSync('converted');
-console.log("-> Directories checked/created successfully.");
+// --- Create necessary directories if they don't exist ---
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
+console.log('✅ Directories ensured.');
 
-app.use(cors());
-console.log("-> CORS middleware enabled.");
+// --- Middleware Setup ---
+app.use(cors()); // Enable Cross-Origin Resource Sharing
+const upload = multer({ dest: uploadsDir });
 
-const upload = multer({ dest: 'uploads/' });
-console.log("-> Multer configured for uploads.");
+console.log('✅ Middleware configured.');
 
-
-app.post('/convert', upload.single('videoFile'), (req, res) => {
-    console.log("\n✅ Received a request on /convert endpoint.");
-    // Check if a file was actually uploaded
+// --- API Endpoint for Conversion ---
+app.post('/convert', upload.single('video'), (req, res) => {
     if (!req.file) {
-        console.error("❌ No file was uploaded with the request.");
         return res.status(400).send('No file uploaded.');
     }
 
     const inputFile = req.file;
-    const bitrate = req.body.bitrate || '30'; // Use bitrate from request, or default to 30
-    // Use a relative path to make the project self-contained
+    const bitrate = req.body.bitrate || '30'; // Default bitrate
+    const originalName = path.parse(inputFile.originalname).name;
+    const outputFileName = `${originalName}.mp4`;
+    const outputPath = path.join(uploadsDir, outputFileName);
+    
+    // *** KEY CHANGE: Point to the local ffmpeg and shell script ***
+    const ffmpegPath = path.join(__dirname, 'bin', 'ffmpeg');
     const scriptPath = path.join(__dirname, 'convert-to-mp4_02.sh');
-    
-    // Define a user-friendly name for the downloaded file, keeping the original name
-    const outputFileName = `${path.basename(inputFile.originalname, path.extname(inputFile.originalname))}.mp4`;
-    const outputPath_ignored = path.join('converted', outputFileName); // This path is ignored by the script, but we pass it for consistency.
 
-    console.log(`   - Input file: ${inputFile.originalname} (temp path: ${inputFile.path})`);
+    console.log(`\n▶️  Received a request on /convert endpoint.`);
+    console.log(`   - Input file: ${inputFile.path}`);
+    console.log(`   - Output path: ${outputPath}`);
     console.log(`   - Bitrate: ${bitrate}`);
-    console.log(`   - Script path: ${scriptPath}`);
-    console.log("   - Executing conversion script...");
+    console.log(`   - Executing conversion script...`);
 
-    const command = `sh "${scriptPath}" "${inputFile.path}" "${outputPath_ignored}" "${bitrate}"`;
+    // We now pass the path to our local ffmpeg as the FIRST argument to the shell script
+    const conversionProcess = spawn('sh', [scriptPath, ffmpegPath, inputFile.path, bitrate]);
+
+    let scriptOutput = '';
+    conversionProcess.stdout.on('data', (data) => {
+        scriptOutput += data.toString();
+    });
     
-    exec(command, (error, stdout, stderr) => {
-        // Based on your log, the actual output path is the input path with .mp4 appended.
-        const actualOutputPath = `${inputFile.path}.mp4`;
+    conversionProcess.stderr.on('data', (data) => {
+        console.error(`   - Script error (stderr): ${data.toString().trim()}`);
+    });
 
-        if (error) {
-            console.error(`❌ Script execution error: ${error.message}`);
-            console.error(`   - stderr: ${stderr}`);
-            fs.unlinkSync(inputFile.path); // Clean up original upload
-            return res.status(500).send(`Conversion script failed: ${stderr}`);
+    conversionProcess.on('close', (code) => {
+        console.log(`   - Script output (stdout): \n--------------------------------------------------\n${scriptOutput.trim()}\n--------------------------------------------------`);
+        if (code === 0) {
+            console.log(`✅ Conversion successful. Sending file back to user.`);
+            res.download(outputPath, outputFileName, (err) => {
+                if (err) {
+                    console.error('❌ Error sending file to user:', err);
+                }
+                // Cleanup both the original upload and the converted file
+                fs.unlink(inputFile.path, (err) => err && console.error('Cleanup error (upload):', err));
+                fs.unlink(outputPath, (err) => err && console.error('Cleanup error (converted):', err));
+            });
+        } else {
+            console.error(`❌ Conversion failed with exit code ${code}.`);
+            fs.unlink(inputFile.path, (err) => err && console.error('Cleanup error (failed upload):', err));
+            res.status(500).send('Conversion failed.');
         }
-
-        // Verify that the converted file actually exists where we expect it
-        if (!fs.existsSync(actualOutputPath)) {
-            console.error(`❌ Conversion failed: Output file not found at ${actualOutputPath}`);
-            console.error(`   - This usually means the shell script failed silently.`);
-            console.error(`   - stderr: ${stderr}`);
-            fs.unlinkSync(inputFile.path); // Clean up original upload
-            return res.status(500).send('Conversion failed: Output file not created.');
-        }
-
-        console.log(`   - Script output (stdout): ${stdout}`);
-        console.log(`✅ Conversion successful. Found output at: ${actualOutputPath}. Sending file back to user.`);
-        
-        // Send the correctly located file back to the browser for download
-        res.download(actualOutputPath, outputFileName, (err) => {
-            if (err) {
-                console.error('❌ Error sending file to user:', err);
-            }
-            // After attempting to send, clean up BOTH the original upload and the converted file
-            console.log("✅ Cleaning up temporary files...");
-            fs.unlinkSync(inputFile.path);
-            fs.unlinkSync(actualOutputPath);
-            console.log("✅ Cleanup complete.");
-        });
     });
 });
 
-console.log(`\nAttempting to listen on port ${port}...`);
-
-// Start the server and add error handling for the listener
-app.listen(port, () => {
-    console.log(`\n✅ SUCCESS: Backend server is running at http://localhost:${port}`);
-    console.log("   Waiting for files to convert...");
-}).on('error', (err) => {
-    console.error("\n❌ FAILED TO START SERVER:", err);
-    if (err.code === 'EADDRINUSE') {
-        console.error(`   Error: Port ${port} is already in use by another application.`);
-    }
+// --- Start the Server ---
+app.listen(PORT, () => {
+    console.log(`\n🎉 SUCCESS: Backend server is running on port ${PORT}`);
 });
+
