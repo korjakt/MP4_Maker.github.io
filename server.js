@@ -102,3 +102,42 @@ app.listen(port, () => {
         console.error(`   Error: Port ${port} is already in use by another application.`);
     }
 });
+
+// Frontend JS function for file conversion using FFmpeg.wasm
+async function convertWithFFmpegWasm(file, bitrate) {
+  const { createFFmpeg, fetchFile } = FFmpeg;
+  
+  // Create and load ffmpeg instance
+  const ffmpeg = createFFmpeg({ log: true });
+  await ffmpeg.load();
+  
+  // Get the file data
+  const inputName = 'input_video';
+  const outputName = 'output.mp4';
+  ffmpeg.FS('writeFile', inputName, await fetchFile(file));
+  
+  // Run conversion with the specified bitrate
+  await ffmpeg.run(
+    '-i', inputName, 
+    '-c:v', 'libx264', 
+    '-crf', '23', 
+    '-preset', 'medium',
+    '-c:a', 'aac',
+    '-b:a', `${bitrate}k`,
+    '-movflags', '+faststart',
+    outputName
+  );
+  
+  // Get the output file data
+  const data = ffmpeg.FS('readFile', outputName);
+  
+  // Create a download URL
+  const blob = new Blob([data.buffer], { type: 'video/mp4' });
+  const url = URL.createObjectURL(blob);
+  
+  // Clean up
+  ffmpeg.FS('unlink', inputName);
+  ffmpeg.FS('unlink', outputName);
+  
+  return url;
+}
