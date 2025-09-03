@@ -299,7 +299,7 @@
 
                 const bitrate = bitrateInput.value;
                 const formData = new FormData();
-                formData.append('videoFile', file);
+                formData.append('video', file);
                 formData.append('bitrate', bitrate);
 
                 console.log(`Uploading ${file.name} for conversion with bitrate ${bitrate}...`);
