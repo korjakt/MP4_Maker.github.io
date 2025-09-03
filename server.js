@@ -24,8 +24,27 @@ const upload = multer({ dest: uploadsDir });
 
 console.log('✅ Middleware configured.');
 
+// --- FFmpeg Setup ---
+const setupFFmpeg = async () => {
+  if (process.env.RENDER) {
+    // On Render, install FFmpeg using apt-get
+    console.log('Installing FFmpeg on Render...');
+    const { execSync } = require('child_process');
+    try {
+      execSync('apt-get update && apt-get install -y ffmpeg');
+      return 'ffmpeg'; // Use global ffmpeg command
+    } catch (error) {
+      console.error('Error installing FFmpeg:', error);
+      throw error;
+    }
+  } else {
+    // Local environment - use the path in bin/
+    return path.join(__dirname, 'bin', 'ffmpeg');
+  }
+};
+
 // --- API Endpoint for Conversion ---
-app.post('/convert', upload.single('video'), (req, res) => {
+app.post('/convert', upload.single('video'), async (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
     }
@@ -37,7 +56,7 @@ app.post('/convert', upload.single('video'), (req, res) => {
     const outputPath = path.join(uploadsDir, outputFileName);
     
     // *** KEY CHANGE: Point to the local ffmpeg and shell script ***
-    const ffmpegPath = path.join(__dirname, 'bin', 'ffmpeg');
+    const ffmpegPath = await setupFFmpeg();
     const scriptPath = path.join(__dirname, 'convert-to-mp4_02.sh');
 
     console.log(`\n▶️  Received a request on /convert endpoint.`);

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: tlk-mp4-maker
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    disk:
+      name: uploads
+      mountPath: /var/uploads
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 16
+    buildFilter:
+      paths:
+        - server.js
+        - package.json
+        - convert-to-mp4_02.sh
