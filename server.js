@@ -26,20 +26,19 @@ console.log('✅ Middleware configured.');
 
 // --- FFmpeg Setup ---
 const setupFFmpeg = async () => {
-  if (process.env.RENDER) {
-    // On Render, install FFmpeg using apt-get
-    console.log('Installing FFmpeg on Render...');
+  // Use the FFmpeg binary from your repository regardless of environment
+  const ffmpegPath = path.join(__dirname, 'bin', 'ffmpeg');
+  
+  // Make sure it's executable
+  try {
     const { execSync } = require('child_process');
-    try {
-      execSync('apt-get update && apt-get install -y ffmpeg');
-      return 'ffmpeg'; // Use global ffmpeg command
-    } catch (error) {
-      console.error('Error installing FFmpeg:', error);
-      throw error;
-    }
-  } else {
-    // Local environment - use the path in bin/
-    return path.join(__dirname, 'bin', 'ffmpeg');
+    execSync(`chmod +x ${ffmpegPath}`);
+    console.log('Made FFmpeg executable');
+    return ffmpegPath;
+  } catch (error) {
+    console.error('Error setting up FFmpeg:', error);
+    // Fallback to global ffmpeg as last resort
+    return 'ffmpeg';
   }
 };
 
