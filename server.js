@@ -59,11 +59,17 @@ app.post('/convert', upload.single('video'), async (req, res) => {
         })
         .on('end', () => {
             console.log(`✅ Conversion successful. Sending file back to user.`);
-            res.download(outputPath, outputFileName, (err) => {
-                if (err) {
-                    console.error('❌ Error sending file to user:', err);
-                }
-                // Cleanup both the original upload and the converted file
+            
+            // Add proper Content-Type header for better browser handling
+            res.setHeader('Content-Type', 'video/mp4');
+            res.setHeader('Content-Disposition', `attachment; filename="${outputFileName}"`);
+            
+            // Stream the file instead of using res.download
+            const fileStream = fs.createReadStream(outputPath);
+            fileStream.pipe(res);
+            
+            // Clean up files after streaming is complete
+            fileStream.on('end', () => {
                 fs.unlink(inputFile.path, (cleanupErr) => cleanupErr && console.error('Cleanup error (upload):', cleanupErr));
                 fs.unlink(outputPath, (cleanupErr) => cleanupErr && console.error('Cleanup error (converted):', cleanupErr));
             });
